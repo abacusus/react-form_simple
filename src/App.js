@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db } from "../firebase"; // adjust path as needed
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const questions = [
   { id: "title", label: "Book Title", type: "text" },
@@ -44,15 +42,13 @@ const questions = [
   },
 ];
 
-const BookSaleForm = ({user}) => {
+const BookSaleForm = () => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [imagesPreview, setImagesPreview] = useState([]);
 
   const current = questions[step];
   const progress = ((step + 1) / questions.length) * 100;
-
-  const booksCollection = collection(db, "booksforsale");
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
@@ -69,22 +65,7 @@ const BookSaleForm = ({user}) => {
     setImagesPreview(updated);
   };
 
-  const uploadImageToCloudinary = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "unsigned_upload");
-    formData.append("folder", "bookbro");
-
-    const res = await fetch("https://api.cloudinary.com/v1_1/dca02df/image/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const data = await res.json();
-    return data.secure_url;
-  };
-
-  const handleNext = async (e) => {
+  const handleNext = (e) => {
     e.preventDefault();
 
     let value;
@@ -99,30 +80,11 @@ const BookSaleForm = ({user}) => {
     setAnswers(updatedAnswers);
 
     if (step === questions.length - 1) {
-      try {
-        const uploadedUrls = await Promise.all(
-          imagesPreview.map((img) => uploadImageToCloudinary(img.file))
-        );
-
-        const fullFormData = {
-          ...updatedAnswers,
-          images: uploadedUrls,
-          createdAt: serverTimestamp(),
-          userId: user.uid,
-          userName: user.displayName || "Anonymous",
-        };
-
-        await addDoc(booksCollection, fullFormData);
-        alert("Your book has been listed successfully!");
-        console.log("Submitted:", fullFormData);
-
-        setAnswers({});
-        setImagesPreview([]);
-        setStep(0);
-      } catch (error) {
-        console.error("Upload failed:", error);
-        alert("Failed to upload. Please try again.");
-      }
+      console.log("Form submitted:", updatedAnswers);
+      alert("Form submitted successfully (check console).");
+      setAnswers({});
+      setImagesPreview([]);
+      setStep(0);
     } else {
       setStep((prev) => prev + 1);
     }
@@ -178,7 +140,7 @@ const BookSaleForm = ({user}) => {
                 required
                 className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-indigo-400"
                 rows="3"
-                placeholder="Type your Details here..."
+                placeholder="Type your details here..."
               />
             )}
 
@@ -213,13 +175,13 @@ const BookSaleForm = ({user}) => {
                 </p>
 
                 {imagesPreview.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-4">
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
                     {imagesPreview.map((img, idx) => (
                       <div key={idx} className="relative group">
                         <img
                           src={img.url}
                           alt={`preview-${idx}`}
-                          className="w-full h-24 object-cover rounded-md border"
+                          className="w-full h-40 object-cover rounded-md border"
                         />
                         <button
                           type="button"
