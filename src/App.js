@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { db } from "../firebase"; // adjust path as needed
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const questions = [
   { id: "title", label: "Book Title", type: "text" },
@@ -42,7 +44,7 @@ const questions = [
   },
 ];
 
-const BookSaleForm = () => {
+const BookSaleForm = ({user}) => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [imagesPreview, setImagesPreview] = useState([]);
@@ -50,14 +52,14 @@ const BookSaleForm = () => {
   const current = questions[step];
   const progress = ((step + 1) / questions.length) * 100;
 
+  const booksCollection = collection(db, "booksforsale");
+
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-
     const newPreviews = files.map((file) => ({
       file,
       url: URL.createObjectURL(file),
     }));
-
     setImagesPreview((prev) => [...prev, ...newPreviews]);
   };
 
@@ -67,11 +69,25 @@ const BookSaleForm = () => {
     setImagesPreview(updated);
   };
 
-  const handleNext = (e) => {
+  const uploadImageToCloudinary = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "unsigned_upload");
+    formData.append("folder", "bookbro");
+
+    const res = await fetch("https://api.cloudinary.com/v1_1/dca02df/image/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await res.json();
+    return data.secure_url;
+  };
+
+  const handleNext = async (e) => {
     e.preventDefault();
 
     let value;
-
     if (current.type === "file") {
       value = imagesPreview.map((img) => img.file);
     } else {
@@ -79,13 +95,36 @@ const BookSaleForm = () => {
       value = form.get(current.id);
     }
 
-    setAnswers((prev) => ({ ...prev, [current.id]: value }));
+    const updatedAnswers = { ...answers, [current.id]: value };
+    setAnswers(updatedAnswers);
 
-    if (step < questions.length - 1) {
-      setStep((prev) => prev + 1);
+    if (step === questions.length - 1) {
+      try {
+        const uploadedUrls = await Promise.all(
+          imagesPreview.map((img) => uploadImageToCloudinary(img.file))
+        );
+
+        const fullFormData = {
+          ...updatedAnswers,
+          images: uploadedUrls,
+          createdAt: serverTimestamp(),
+          userId: user.uid,
+          userName: user.displayName || "Anonymous",
+        };
+
+        await addDoc(booksCollection, fullFormData);
+        alert("Your book has been listed successfully!");
+        console.log("Submitted:", fullFormData);
+
+        setAnswers({});
+        setImagesPreview([]);
+        setStep(0);
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("Failed to upload. Please try again.");
+      }
     } else {
-      alert("Form submitted! Check console for output.");
-      console.log("Form Submission:", answers);
+      setStep((prev) => prev + 1);
     }
 
     e.target.reset();
@@ -94,7 +133,6 @@ const BookSaleForm = () => {
 
   return (
     <div className="h-screen bg-gray-100 flex flex-col">
-      {/* Progress Bar */}
       <div className="w-full h-3 bg-gray-300">
         <motion.div
           className="h-full bg-indigo-500"
@@ -140,7 +178,7 @@ const BookSaleForm = () => {
                 required
                 className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-indigo-400"
                 rows="3"
-                placeholder="Type your response..."
+                placeholder="Type your Details here..."
               />
             )}
 
@@ -200,23 +238,22 @@ const BookSaleForm = () => {
           </div>
 
           <div className="mt-8 flex gap-4">
-  {step > 0 && (
-    <button
-      type="button"
-      onClick={() => setStep((prev) => prev - 1)}
-      className="px-6 py-3 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition"
-    >
-      Back
-    </button>
-  )}
-  <button
-    type="submit"
-    className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
-  >
-    {step < questions.length - 1 ? "Next" : "Submit"}
-  </button>
-</div>
-
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={() => setStep((prev) => prev - 1)}
+                className="px-6 py-3 bg-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-400 transition"
+              >
+                Back
+              </button>
+            )}
+            <button
+              type="submit"
+              className="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+            >
+              {step < questions.length - 1 ? "Next" : "Submit"}
+            </button>
+          </div>
         </motion.form>
       </AnimatePresence>
     </div>
