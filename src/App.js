@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import VantaBackground from "./VantaBackground"; 
 
 const questions = [
   { id: "title", label: "Book Title", type: "text" },
@@ -94,8 +95,13 @@ const BookSaleForm = () => {
   };
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col">
-      <div className="w-full h-3 bg-gray-300">
+    <div className="relative h-screen overflow-hidden">
+      {/* 🔹 Animated background component */}
+      <div className="absolute inset-0 -z-10">
+        <VantaBackground />
+      </div>
+
+      <div className="w-full h-3 bg-gray-300 z-10 relative">
         <motion.div
           className="h-full bg-indigo-500"
           initial={{ width: 0 }}
@@ -112,14 +118,16 @@ const BookSaleForm = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -30 }}
           transition={{ duration: 0.4 }}
-          className="flex-grow flex flex-col items-center justify-center px-4 text-center"
+          className="flex-grow flex flex-col items-center justify-center px-4 text-center relative z-10"
         >
           <div>
             <h2 className="text-2xl md:text-4xl font-bold text-indigo-600 mb-6">
               {current.label}
             </h2>
             {current.helpText && (
-              <p className="text-md text-gray-500 mb-4">{current.helpText}</p>
+              <p className="text-md text-gray-100 mb-4 italic drop-shadow">
+                {current.helpText}
+              </p>
             )}
           </div>
 
@@ -145,7 +153,7 @@ const BookSaleForm = () => {
             )}
 
             {current.type === "radio" && (
-              <div className="space-y-3 text-left">
+              <div className="space-y-3 text-left text-white">
                 {current.options.map((opt) => (
                   <label key={opt.value} className="block">
                     <input
@@ -170,7 +178,7 @@ const BookSaleForm = () => {
                   onChange={handleImageChange}
                   className="w-full p-3 border rounded-lg bg-white"
                 />
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-white mt-2">
                   You can select multiple images
                 </p>
 
